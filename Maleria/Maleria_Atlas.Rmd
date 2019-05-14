@@ -1,0 +1,155 @@
+---
+title: "Maleria Atlas"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+#install.packages("maps")
+#install.packages("mapproj")
+#install.packages("gganimate")
+#install.packages("gifski")
+#install.packages("png")
+
+library(png)
+library(gifski)
+library(gganimate)
+library(mapproj)
+library(maps)
+library(malariaAtlas)
+theme_set(theme_light())
+```
+
+```{r}
+#PR(PArasite Rate)
+kenya_pr <- tbl_df(malariaAtlas::getPR( ISO = "KEN", species = "BOTH"))%>%
+  filter(!is.na(pr))
+
+  
+
+```
+
+```{r}
+kenya_pr %>%
+  group_by(year_start)%>%
+  summarize(examined = sum(examined),
+            positive = sum(positive),
+            studies = n())%>%
+  mutate(pr = positive/examined)%>%
+  ggplot(aes(year_start,pr))+
+  geom_line()
+
+kenya_pr %>%
+  mutate(decade = 10*(year_start %/% 10))%>%
+  arrange(pr)%>%
+  ggplot(aes(longitude, latitude, color =pr))+
+  borders("world", region ="kenya")+
+  geom_point()+
+  scale_color_gradient2(low ="blue", high = "red", midpoint = .5, labels = scales:: percent_format())+
+  facet_wrap(~decade)+
+  theme_void()+
+  coord_map()+
+  labs(color = "Prevalence")
+  
+
+
+
+```
+
+### Aggregated Cross-Country
+
+```{r}
+malaria_inc <- read.csv("/home/vineet/Maleria/malaria_inc.csv")
+
+malaria_inc_processed <- malaria_inc %>%
+  setNames(c('country', 'code', 'year', 'incidence'))%>%
+  mutate(incidence = incidence / 1000)
+  
+  
+
+```
+```{r}
+malaria_inc_processed %>%
+  filter(country %in% sample(unique(country), 6))%>%
+  ggplot(aes(year, incidence, color = country))+
+  geom_line()+
+  scale_y_continuous(labels = scales::percent_format())
+```
+
+```{r}
+
+malaria_spread <- malaria_inc_processed %>%
+  mutate(year = paste0('Y', year))%>%
+  spread(year,incidence)
+
+malaria_spread %>%
+  filter(country != 'Turkey', !is.na(code))%>%
+  mutate(current = Y2015,
+             change = Y2015 - Y2000)%>%
+  ggplot(aes(current, change))+
+  geom_point()+
+  geom_text(aes(label =code),vjust = 1, hjust = 1)
+```
+
+
+```{r}
+
+#library("gganimate")
+
+malaria_inc_deaths <- read.csv("/home/vineet/Maleria/malaria_deaths_age.csv")
+
+
+
+malaria_country_data <- malaria_inc_deaths %>%
+  inner_join(maps::iso3166 %>%
+               select(a3,mapname), by = c(code ="a3"))
+
+malaria_map_data <- map_data("world") %>%
+  filter(region != "Antarctica")%>%
+  tbl_df()%>%
+  inner_join(malaria_country_data, by = c(region = "mapname"))%>%
+  filter(year %in% c(2000,2005,2010))
+
+map_data("world") %>%
+  filter(region != 'Antarctica')%>%
+  tbl_df()%>%
+  inner_join(malaria_country_data, by = c(region = "mapname"))%>%
+  filter(year == 2000)%>%
+  ggplot(aes(long,lat, group = group, fill = deaths))+
+  geom_polygon()+
+  scale_fill_gradient2(low ="blue", high = "red", midpoint = 100)+
+  theme_void()
+
+```
+```{r}
+
+```
+
+### Maleria deaths over time
+
+```{r}
+
+malaria_map_data %>%
+  filter(year %% 2 == 0)%>%
+  ggplot(aes(long,lat, group = group, fill = deaths))+
+  geom_polygon()+
+  scale_fill_gradient2(low ="blue", high = "red", midpoint = 100)+
+  #facet_wrap(~ year)+
+  theme_void()+
+  transition_manual(year)
+```
+
+```{r}
+
+```
+
+```{r}
+?maps
+```
+
+
+
