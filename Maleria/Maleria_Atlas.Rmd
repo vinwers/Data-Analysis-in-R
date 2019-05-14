@@ -143,13 +143,7 @@ malaria_map_data %>%
   transition_manual(year)
 ```
 
-```{r}
 
-```
-
-```{r}
-?maps
-```
 
 
 
